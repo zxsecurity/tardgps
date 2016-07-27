@@ -61,6 +61,7 @@ def broadcast_gps(targetTime, groundhog):
     threading.Thread(target=run_blade(targetTime)).start()
     wait_for_gps_fix()
     currentGPSTime = get_gps_time()
+    flag = False
     while True:        
         currentTime = datetime.now()
         runningTime = currentTime - startTime
@@ -70,7 +71,10 @@ def broadcast_gps(targetTime, groundhog):
         lowMovingTargetTime = movingTargetTime - timedelta(seconds=window)
         previousGPSTime = currentGPSTime
         currentGPSTime = get_gps_time()
-        if previousGPSTime == currentGPSTime:
+        if flag:
+            # We have reached the target time and groundhog is off
+            pass
+        elif previousGPSTime == currentGPSTime:
             logger.debug('No new GPS fix. previousGPSTime == currentGPSTime. Sleeping 5 seconds.')
         else:
             logger.debug('Current GPS Time: %s. Low Moving Target Time: %s. High Moving Target Time: %s.' % (currentGPSTime, lowMovingTargetTime, highMovingTargetTime))
@@ -83,9 +87,8 @@ def broadcast_gps(targetTime, groundhog):
                         logger.info('Iteration Target Time reached')
                         return                     
                     else:
-                        logger.info('Target Time reached. Will perform no more, time changes')                  
-            else:
-                pass
+                        logger.info('Target Time reached. Will perform no more, time changes')               
+                        flag = True   
         time.sleep(5)
    
 def coordinate():
@@ -105,7 +108,7 @@ def coordinate():
         elif newTime < targetTime and groundhog:
             logger.info('Moving time from %s to %s target time is %s' % (currentGPSTime, targetTime, targetTime))
             logger.info('Will keep time warping as groundhog is true')
-            broadcast_gps(targetTime, False)
+            broadcast_gps(targetTime, True)
         else:        
             logger.info('Moving time from %s to %s target time is %s' % (currentGPSTime, newTime, targetTime))
             broadcast_gps(newTime, True) 
