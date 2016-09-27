@@ -51,7 +51,7 @@ def run_blade(time):
     longitude = cfg.get('location', 'longitiude')
     altitude = cfg.get('location', 'altitude')
     time_formated = time.strftime('%Y/%m/%d,%H:%M:%S')
-    command = '%s -e %s -l %s,%s,%s -t %s&' % (bin_path, brdc_file, latitude, longitude, altitude, time_formated)
+    command = '%s -e %s -l %s,%s,%s -T %s&' % (bin_path, brdc_file, latitude, longitude, altitude, time_formated)
     logger.info('Starting bldeGPS')
     logger.debug('Using the follow command line: %s' % (command))
     os.system(command)
@@ -92,14 +92,26 @@ def broadcast_gps(targetTime, groundhog):
         time.sleep(5)
    
 def coordinate():
-    wait_for_gps_fix()
-    currentGPSTime = get_gps_time()
+    flag = False
+    if cfg.getboolean('time', 'dont_wait_for_gps_fix_on_start'):
+        logger.debug('First run not waiting for GPS Fix')
+        currentGPSTime = datetime.now().replace(tzinfo=None)
+        flag = True
+    else:
+        logger.debug('First run is waiting for GPS Fix')
+        wait_for_gps_fix()
+        currentGPSTime = get_gps_time()
+        flag = Flase
     targetTime = datetime.strptime(cfg.get('time', 'target'), '%Y-%m-%d %H:%M:%S')
     timeStep = cfg.getint('time', 'step')
     stabliseTime = cfg.getint('time', 'stabilise_time')
     groundhog = cfg.getboolean('time', 'groundhog')    
     while True:
-        currentGPSTime = get_gps_time()
+        if flag:
+            currentGPSTime = datetime.now().replace(tzinfo=None)
+            flag = False
+        else:            
+            currentGPSTime = get_gps_time()
         newTime = currentGPSTime - timedelta(seconds=timeStep)
         if newTime < targetTime and not groundhog:
             logger.info('Moving time from %s to %s target time is %s' % (currentGPSTime, targetTime, targetTime))
@@ -195,7 +207,6 @@ def start_script():
 
     
     try:
-        pass
         coordinate()
     except KeyboardInterrupt:
         shut_down()
